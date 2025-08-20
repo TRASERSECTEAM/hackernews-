@@ -1,0 +1,553 @@
+<?php
+session_start();
+header('Content-Type: text/html; charset=UTF-8');
+
+function trackVisitor() {
+    $visitor_data = [
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'Unknown',
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+        'timestamp' => date('Y-m-d H:i:s'),
+        'page' => $_SERVER['REQUEST_URI'] ?? '/',
+        'referer' => $_SERVER['HTTP_REFERER'] ?? 'Direct'
+    ];
+    
+    $json_file = 'data/users.json';
+    $users = [];
+    
+    if (file_exists($json_file)) {
+        $users = json_decode(file_get_contents($json_file), true) ?: [];
+    }
+    
+    $users[] = $visitor_data;
+    
+    if (!is_dir('data')) {
+        mkdir('data', 0755, true);
+    }
+    
+    file_put_contents($json_file, json_encode($users, JSON_PRETTY_PRINT));
+}
+
+if (!isset($_GET['admin'])) {
+    trackVisitor();
+}
+
+if (isset($_POST['admin_login'])) {
+    $email = $_POST['email'] ?? '';
+    $password = $_POST['password'] ?? '';
+    
+    if ($email === 'admin@kominfows.ct.ws' && $password === 'kominfows55552') {
+        $_SESSION['admin_logged_in'] = true;
+        header('Location: ?admin=dashboard');
+        exit;
+    } else {
+        $login_error = 'Email atau password salah';
+    }
+}
+
+if (isset($_POST['logout'])) {
+    unset($_SESSION['admin_logged_in']);
+    header('Location: /');
+    exit;
+}
+
+function getVisitorStats() {
+    $json_file = 'data/users.json';
+    if (!file_exists($json_file)) {
+        return ['total' => 0, 'today' => 0, 'unique_ips' => 0, 'visitors' => []];
+    }
+    
+    $users = json_decode(file_get_contents($json_file), true) ?: [];
+    $today = date('Y-m-d');
+    $today_visitors = array_filter($users, function($user) use ($today) {
+        return strpos($user['timestamp'], $today) === 0;
+    });
+    
+    $unique_ips = array_unique(array_column($users, 'ip'));
+    
+    return [
+        'total' => count($users),
+        'today' => count($today_visitors),
+        'unique_ips' => count($unique_ips),
+        'visitors' => array_reverse(array_slice($users, -50))
+    ];
+}
+
+$is_admin = isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'];
+$show_dashboard = isset($_GET['admin']) && $_GET['admin'] === 'dashboard' && $is_admin;
+$stats = $show_dashboard ? getVisitorStats() : null;
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diskominfo Traser - Portal Resmi Komunikasi dan Informatika</title>
+    
+    <meta name="description" content="Portal resmi Diskominfo Traser untuk komunikasi dan informatika, cyber security, anti-phishing, intelligence archive, berita teknologi terkini">
+    <meta name="keywords" content="diskominfo, kominfo, traser, komunikasi, informatika, cyber security, anti phishing, intelligence, archive, berita teknologi, pemerintah, resmi">
+    <meta name="author" content="Diskominfo Traser Official">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <meta name="bingbot" content="index, follow">
+    <meta name="yandex" content="index, follow">
+    <meta name="revisit-after" content="1 days">
+    <meta name="rating" content="general">
+    <meta name="distribution" content="global">
+    <meta name="language" content="Indonesian">
+    <meta name="geo.region" content="ID">
+    <meta name="geo.country" content="Indonesia">
+    <meta name="geo.placename" content="Indonesia">
+    <meta name="ICBM" content="-6.2088, 106.8456">
+    <meta name="DC.Title" content="Diskominfo Traser Official">
+    <meta name="DC.Creator" content="Diskominfo Indonesia">
+    <meta name="DC.Subject" content="Komunikasi Informatika Cyber Security">
+    <meta name="DC.Description" content="Portal resmi Diskominfo untuk komunikasi dan informatika">
+    <meta name="DC.Publisher" content="Diskominfo Traser">
+    <meta name="DC.Date" content="2025">
+    <meta name="DC.Type" content="website">
+    <meta name="DC.Format" content="text/html">
+    <meta name="DC.Language" content="id">
+    <meta name="DC.Rights" content="Copyright Diskominfo Traser">
+    
+    <meta property="og:title" content="Diskominfo Traser - Portal Resmi Komunikasi dan Informatika">
+    <meta property="og:description" content="Portal resmi Diskominfo Traser untuk komunikasi dan informatika, cyber security, anti-phishing">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://diskominfo.ct.ws">
+    <meta property="og:site_name" content="Diskominfo Traser">
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:image" content="https://yanshs.rf.gd/upload/img/68a1870ef3b67_1755416334.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Diskominfo Traser Official Logo">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Diskominfo Traser Official">
+    <meta name="twitter:description" content="Portal resmi Diskominfo untuk komunikasi dan informatika">
+    <meta name="twitter:image" content="https://yanshs.rf.gd/upload/img/68a1870ef3b67_1755416334.png">
+    
+    <meta name="application-name" content="Diskominfo Traser">
+    <meta name="msapplication-TileColor" content="#2b5797">
+    <meta name="theme-color" content="#ffffff">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Diskominfo Traser">
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Content-Language" content="id">
+    <meta http-equiv="expires" content="43200">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache">
+    
+    <meta name="format-detection" content="telephone=no">
+    <meta name="format-detection" content="email=no">
+    <meta name="format-detection" content="address=no">
+    
+    <meta name="cyber-security" content="enabled">
+    <meta name="anti-phishing" content="active">
+    <meta name="intelligence-system" content="monitoring">
+    <meta name="government-portal" content="official">
+    <meta name="ministry-website" content="kominfo">
+    <meta name="security-level" content="high">
+    <meta name="encryption-status" content="secured">
+    <meta name="firewall-protection" content="enabled">
+    <meta name="malware-scanning" content="active">
+    <meta name="threat-detection" content="realtime">
+    
+    <link rel="canonical" href="https://diskominfo.ct.ws">
+    <link rel="alternate" hreflang="id" href="https://diskominfo.ct.ws">
+    <link rel="dns-prefetch" href="//diskominfo.ct.ws">
+    <link rel="preconnect" href="https://diskominfo.ct.ws">
+    
+    <link rel="stylesheet" href="https://diskominfo.ct.ws/uploads/CSS/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preload" href="https://diskominfo.ct.ws/uploads/javascript/java.js" as="script">
+    
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "GovernmentOrganization",
+        "name": "Diskominfo Traser",
+        "alternateName": "Kominfo Traser Official",
+        "url": "https://diskominfo.ct.ws",
+        "logo": "https://yanshs.rf.gd/upload/img/68a1870ef3b67_1755416334.png",
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "diskominfows@gmail.com",
+            "contactType": "customer service"
+        },
+        "sameAs": [
+            "https://t.me/usrz7"
+        ]
+    }
+    </script>
+</head>
+<body data-theme="light">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Ubah Tema">
+        <i class="fas fa-moon" id="theme-icon"></i>
+    </button>
+    
+    <?php if (!$show_dashboard): ?>
+    <button class="admin-login" onclick="openLoginModal()" title="Login Admin">
+        <i class="fas fa-user-shield"></i>
+        Admin
+    </button>
+    <?php endif; ?>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Login Admin</h3>
+                <button class="close-modal" onclick="closeLoginModal()">&times;</button>
+            </div>
+            
+            <?php if (isset($login_error)): ?>
+                <div class="error-message"><?php echo htmlspecialchars($login_error); ?></div>
+            <?php endif; ?>
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="email">Email Admin</label>
+                    <input type="email" id="email" name="email" required placeholder="admin@kominfows.ct.ws">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Masukkan password">
+                </div>
+                
+                <button type="submit" name="admin_login" class="login-btn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <?php if ($show_dashboard): ?>
+    <div class="dashboard active">
+        <div class="dashboard-header">
+            <h2 class="dashboard-title">Dashboard Admin - Monitoring Trafik</h2>
+            <form method="POST" style="display: inline;">
+                <button type="submit" name="logout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </form>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>Total Pengunjung</h4>
+                <div class="stat-number"><?php echo number_format($stats['total']); ?></div>
+            </div>
+            
+            <div class="stat-card">
+                <h4>Pengunjung Hari Ini</h4>
+                <div class="stat-number"><?php echo number_format($stats['today']); ?></div>
+            </div>
+            
+            <div class="stat-card">
+                <h4>IP Unik</h4>
+                <div class="stat-number"><?php echo number_format($stats['unique_ips']); ?></div>
+            </div>
+        </div>
+        
+        <div class="visitors-table">
+            <h4>50 Pengunjung Terakhir</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>IP Address</th>
+                        <th>Halaman</th>
+                        <th>Referer</th>
+                        <th>User Agent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($stats['visitors'] as $visitor): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($visitor['timestamp']); ?></td>
+                        <td><?php echo htmlspecialchars($visitor['ip']); ?></td>
+                        <td><?php echo htmlspecialchars($visitor['page']); ?></td>
+                        <td><?php echo htmlspecialchars(substr($visitor['referer'], 0, 50)) . (strlen($visitor['referer']) > 50 ? '...' : ''); ?></td>
+                        <td><?php echo htmlspecialchars(substr($visitor['user_agent'], 0, 80)) . (strlen($visitor['user_agent']) > 80 ? '...' : ''); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php else: ?>
+
+    <main class="main-content">
+    <header class="main-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="https://yanshs.rf.gd/upload/img/68a1870ef3b67_1755416334.png" alt="Diskominfo Traser Official Logo" class="main-logo">
+                    <div class="logo-text">
+                        <h1>Diskominfo Traser</h1>
+                        <p>Portal Resmi Komunikasi dan Informatika</p>
+                    </div>
+                </div>
+                <div class="header-contact">
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <span>diskominfows@gmail.com</span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fab fa-telegram"></i>
+                        <span>@usrz7</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="main-navigation">
+        <div class="container">
+            <ul class="nav-menu">
+                <li><a href="#beranda" class="nav-link active"><i class="fas fa-home"></i> Beranda</a></li>
+                <li><a href="#blog-content" class="nav-link"><i class="fas fa-blog"></i> Blog</a></li>
+                <li><a href="#services-section" class="nav-link"><i class="fas fa-shield-alt"></i> Layanan</a></li>
+                <li><a href="#kontak" class="nav-link"><i class="fas fa-envelope"></i> Kontak</a></li>
+                <li><a href="mailto:diskominfows@gmail.com" class="nav-link"><i class="fas fa-at"></i> Email</a></li>
+                <li><a href="https://t.me/usrz7" class="nav-link" target="_blank"><i class="fab fa-telegram"></i> Telegram</a></li>
+<li><a href="https://hackernews.web.id" class="nav-link" target="_blank"><i class="fab fa-telegram"></i> BackLinks</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <section id="beranda" class="hero-section">
+                <div class="hero-content">
+                    <h2>Selamat Datang di Portal Resmi Diskominfo Traser</h2>
+                    <p>Portal informasi terdepan untuk komunikasi dan informatika dengan sistem keamanan cyber yang terintegrasi, perlindungan anti-phishing, dan arsip intelligence untuk melayani masyarakat Indonesia dengan teknologi terdepan.</p>
+                </div>
+            </section>
+
+            <section id="blog-content" class="blog-content">
+                <div class="section-header">
+                    <h3>Blog Diskominfo Traser</h3>
+                    <p>Portal resmi komunikasi dan informatika dengan fokus cyber security</p>
+                </div>
+                
+                <div class="blog-posts">
+                    <article class="blog-post">
+                        <div class="post-header">
+                            <span class="post-category cyber-security">Cyber Security</span>
+                            <h4>Sistem Keamanan Cyber Nasional 2025</h4>
+                            <span class="post-date">17 Agustus 2025</span>
+                        </div>
+                        <div class="post-content">
+                            <p>Pemerintah Indonesia melalui Diskominfo Traser meluncurkan sistem keamanan cyber nasional yang terintegrasi dengan teknologi artificial intelligence dan machine learning untuk melindungi infrastruktur digital negara dari berbagai ancaman siber modern. Sistem ini mencakup monitoring real-time, threat detection, dan response automation yang dapat menangani ribuan serangan per detik.</p>
+                            <p>Implementasi sistem ini melibatkan kerjasama dengan berbagai instansi pemerintah, sektor swasta, dan organisasi internasional untuk membangun ekosistem keamanan yang komprehensif dan berkelanjutan.</p>
+                        </div>
+                    </article>
+
+                    <article class="blog-post">
+                        <div class="post-header">
+                            <span class="post-category anti-phishing">Anti-Phishing</span>
+                            <h4>Program Perlindungan Anti-Phishing Nasional</h4>
+                            <span class="post-date">16 Agustus 2025</span>
+                        </div>
+                        <div class="post-content">
+                            <p>Diskominfo Traser mengembangkan program anti-phishing komprehensif yang mencakup edukasi masyarakat, sistem deteksi otomatis, dan kerjasama dengan institusi perbankan untuk melindungi data pribadi dan finansial masyarakat Indonesia. Program ini menggunakan teknologi machine learning untuk mengidentifikasi pola serangan phishing yang terus berkembang.</p>
+                            <p>Sistem deteksi canggih dapat menganalisis jutaan email dan website setiap hari untuk mengidentifikasi potensi ancaman phishing sebelum mencapai pengguna akhir.</p>
+                        </div>
+                    </article>
+
+                    <article class="blog-post">
+                        <div class="post-header">
+                            <span class="post-category digitalization">Digitalisasi</span>
+                            <h4>Transformasi Digital Layanan Pemerintah</h4>
+                            <span class="post-date">15 Agustus 2025</span>
+                        </div>
+                        <div class="post-content">
+                            <p>Era baru pelayanan pemerintah melalui transformasi digital yang mencakup implementasi sistem terintegrasi, artificial intelligence, dan blockchain technology untuk meningkatkan efisiensi pelayanan publik di seluruh Indonesia. Platform digital ini memungkinkan masyarakat mengakses berbagai layanan pemerintah melalui satu portal terpadu.</p>
+                            <p>Sistem ini dirancang dengan standar keamanan tinggi dan user experience yang optimal untuk memastikan kemudahan akses bagi semua lapisan masyarakat.</p>
+                        </div>
+                    </article>
+
+                    <article class="blog-post">
+                        <div class="post-header">
+                            <span class="post-category intelligence">Intelligence</span>
+                            <h4>Sistem Intelligence Archive Terintegrasi</h4>
+                            <span class="post-date">14 Agustus 2025</span>
+                        </div>
+                        <div class="post-content">
+                            <p>Peluncuran sistem intelligence archive yang menggunakan teknologi cloud computing dan big data analytics untuk menyimpan, menganalisis, dan mengakses informasi strategis secara efisien dan aman. Sistem ini mampu memproses petabytes data dengan kecepatan tinggi dan akurasi maksimal.</p>
+                            <p>Teknologi advanced encryption dan distributed storage memastikan keamanan data sekaligus memungkinkan akses cepat untuk analisis real-time dalam pengambilan keputusan strategis.</p>
+                        </div>
+                    </article>
+
+                    <article class="blog-post">
+                        <div class="post-header">
+                            <span class="post-category international">Kerjasama Internasional</span>
+                            <h4>Kerjasama Global Keamanan Siber</h4>
+                            <span class="post-date">13 Agustus 2025</span>
+                        </div>
+                        <div class="post-content">
+                            <p>Indonesia memperkuat kerjasama bilateral dan multilateral dengan negara-negara ASEAN dan dunia dalam bidang keamanan siber, intelligence sharing, dan pengembangan teknologi anti-phishing untuk menghadapi ancaman global yang semakin kompleks.</p>
+                            <p>Kolaborasi internasional ini mencakup pertukaran informasi threat intelligence, joint training programs, dan pengembangan standar keamanan siber yang dapat diadopsi secara regional maupun global.</p>
+                        </div>
+                    </article>
+
+                    <article class="blog-post">
+                        <div class="post-header">
+                            <span class="post-category blockchain">Blockchain</span>
+                            <h4>Inovasi Blockchain untuk Transparansi Pemerintah</h4>
+                            <span class="post-date">12 Agustus 2025</span>
+                        </div>
+                        <div class="post-content">
+                            <p>Implementasi teknologi blockchain dalam sistem pemerintahan untuk meningkatkan transparansi, akuntabilitas, dan efisiensi proses administrasi publik dengan sistem yang tidak dapat dimanipulasi dan terdesentralisasi. Setiap transaksi dan keputusan pemerintah dicatat secara permanen dan dapat diverifikasi oleh publik.</p>
+                            <p>Teknologi ini memungkinkan audit trail yang lengkap untuk setiap proses pemerintahan, mulai dari pengadaan barang dan jasa hingga distribusi bantuan sosial kepada masyarakat.</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section id="services-section" class="services-section">
+                <div class="section-header">
+                    <h3>Layanan Kami</h3>
+                    <p>Layanan terintegrasi untuk komunikasi dan informatika modern</p>
+                </div>
+                
+                <div class="services-grid">
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h4>Cyber Security</h4>
+                        <p>Sistem keamanan siber terdepan dengan teknologi AI dan machine learning untuk melindungi infrastruktur digital Indonesia</p>
+                    </div>
+                    
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <h4>Anti-Phishing Protection</h4>
+                        <p>Program perlindungan komprehensif terhadap serangan phishing dengan sistem deteksi otomatis dan edukasi masyarakat</p>
+                    </div>
+                    
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h4>Intelligence System</h4>
+                        <p>Sistem intelligence terintegrasi dengan big data analytics untuk analisis informasi strategis secara real-time</p>
+                    </div>
+                    
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-archive"></i>
+                        </div>
+                        <h4>Digital Archive</h4>
+                        <p>Sistem penyimpanan digital dengan teknologi cloud computing untuk arsip dokumen dan data pemerintah yang aman</p>
+                    </div>
+                    
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h4>Mobile Technology</h4>
+                        <p>Pengembangan aplikasi mobile untuk layanan pemerintah yang responsif dan user-friendly di berbagai platform</p>
+                    </div>
+                    
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <h4>Digital Transformation</h4>
+                        <p>Transformasi digital menyeluruh untuk modernisasi layanan pemerintah dengan teknologi terkini dan inovasi berkelanjutan</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+    <?php endif; ?>
+
+    <footer id="kontak" class="main-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Diskominfo Traser</h4>
+                    <p>Portal resmi Komunikasi dan Informatika Indonesia dengan sistem keamanan cyber terintegrasi, anti-phishing protection, dan intelligence archive untuk melayani masyarakat Indonesia.</p>
+                    <div class="footer-contact">
+                        <p><i class="fas fa-envelope"></i> diskominfows@gmail.com</p>
+                        <p><i class="fab fa-telegram"></i> @usrz7</p>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Layanan Utama</h4>
+                    <ul>
+                        <li><a href="#blog-content">Blog</a></li>
+                        <li><a href="#services-section">Layanan</a></li>
+                        <li><a href="#kontak">Kontak</a></li>
+                        <li><a href="mailto:diskominfows@gmail.com">Email</a></li>
+                        <li><a href="https://t.me/usrz7" target="_blank">Telegram</a></li>
+<li><a href="https://hackernews.web.id" target="_blank">BackLink</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Informasi</h4>
+                    <ul>
+                        <li><a href="#beranda">Beranda</a></li>
+                        <li><a href="#blog-content">Blog</a></li>
+                        <li><a href="#services-section">Layanan</a></li>
+                        <li><a href="#kontak">Kontak</a></li>
+                        <li><a href="mailto:diskominfows@gmail.com">Email</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Keamanan</h4>
+                    <ul>
+                        <li><a href="https://t.me/usrz7" target="_blank">Telegram</a></li>
+                        <li><a href="mailto:diskominfows@gmail.com">Email Support</a></li>
+                        <li><a href="#beranda">Beranda</a></li>
+                        <li><a href="#blog-content">Blog Terbaru</a></li>
+                        <li><a href="#services-section">Layanan Lengkap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="copyright">
+                    <p>&copy; 2025 Diskominfo Traser. Hak Cipta Dilindungi. Portal Resmi Komunikasi dan Informatika Indonesia.</p>
+                </div>
+                <div class="security-badges">
+                    <span class="security-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        SSL Secured
+                    </span>
+                    <span class="security-badge">
+                        <i class="fas fa-lock"></i>
+                        Encrypted
+                    </span>
+                    <span class="security-badge">
+                        <i class="fas fa-check-circle"></i>
+                        Verified
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="uploads/javascript/java.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                })
+                .catch(function(err) {
+                    console.log('ServiceWorker registration failed');
+                });
+        }
+    </script>
+</body>
+</html>
